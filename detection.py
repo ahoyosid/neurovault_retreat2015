@@ -1,4 +1,5 @@
 import os
+from os.path import join as pjoin
 import glob
 
 import numpy as np
@@ -13,10 +14,17 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.cross_validation import ShuffleSplit, cross_val_score
 from sklearn.metrics import classification_report
 
-data_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis', 'data')
-cache_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis', 'cache')
-images = sorted(glob.glob(os.path.join(data_dir, 'original', '*.nii.gz')))
-images.remove('/home/ys218403/neurovault_analysis/data/original/0407.nii.gz')
+# data_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'data')
+# cache_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'cache')
+
+data_dir = pjoin('/media', 'ahoyosid', 'Seagate Backup Plus Drive',
+                 'neurovault_analysis')
+cache_dir = 'cache'
+
+
+niimgs_dir = pjoin(data_dir, 'original')
+images = sorted(glob.glob(pjoin(niimgs_dir, '*.nii.gz')))
+images.remove(pjoin(niimgs_dir, '0407.nii.gz')
 
 encoder = NeurovaultEncoder(memory=cache_dir, percentiles=[5, 95], n_jobs=-1)
 X = encoder.fit_transform(images)
@@ -28,7 +36,8 @@ X = imputer.fit_transform(X)
 imputer = Imputer(-np.inf, strategy='median')
 X = imputer.fit_transform(X)
 
-labels = pd.read_csv(os.path.join(data_dir,'labels.csv'))[['image_id', 'map_type', 'is_yannick_brain']]
+labels = pd.read_csv(pjoin(data_dir,'labels.csv'))[['image_id', 'map_type',
+                                                    'is_yannick_brain']]
 y = labels['is_yannick_brain'].values
 
 print (y == 0).sum()
