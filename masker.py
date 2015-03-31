@@ -1,5 +1,5 @@
 import os
-
+from os.path import join as pjoin
 import numpy as np
 import nibabel as nb
 
@@ -14,8 +14,9 @@ from nilearn.plotting import plot_img
 
 from matplotlib import pyplot as plt
 
-data_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis', 'data')
-brain_mask_img = nb.load(os.path.join(data_dir, 'MNI152_T1_3mm_brain_mask.nii.gz'))
+# data_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'data')
+brain_mask_img = nb.load(pjoin(os.sep, 'usr', 'share', 'fsl', 'data',
+                               'standard', 'MNI152_T1_3mm_brain_mask.nii.gz'))
 brain_n_voxels = int(brain_mask_img.get_data().sum())
 
 
@@ -84,7 +85,7 @@ def compute_neurovault_mask(img, n_dilations):
                 out_brain = 0
             else:
                 out_brain = mask[~brain_mask].sum() / float(mask.sum())
-            
+
             if best_ratio < brain_coverage / out_brain:
                 best_ratio = brain_coverage / out_brain
                 best_label = label
@@ -150,6 +151,6 @@ if __name__ == '__main__':
     cache_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis', 'cache')
     images = glob.glob(os.path.join(data_dir, 'original', '*.nii.gz'))
     images.remove('/home/ys218403/neurovault_analysis/data/original/0407.nii.gz')
-    
+
     encoder = NeurovaultEncoder(memory=cache_dir, n_jobs=-1)
     X = encoder.fit_transform(images)

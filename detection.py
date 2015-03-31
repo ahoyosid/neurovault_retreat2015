@@ -24,7 +24,7 @@ cache_dir = 'cache'
 
 niimgs_dir = pjoin(data_dir, 'original')
 images = sorted(glob.glob(pjoin(niimgs_dir, '*.nii.gz')))
-images.remove(pjoin(niimgs_dir, '0407.nii.gz')
+images.remove(pjoin(niimgs_dir, '0407.nii.gz'))
 
 encoder = NeurovaultEncoder(memory=cache_dir, percentiles=[5, 95], n_jobs=-1)
 X = encoder.fit_transform(images)
