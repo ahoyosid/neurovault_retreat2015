@@ -23,7 +23,7 @@ from nilearn.masking import compute_background_mask, _extrapolate_out_mask
 from nilearn.plotting.img_plotting import plot_anat
 
 # Use a joblib memory, to avoid depending on an Internet connection
-mem = Memory(cachedir='/tmp/neurovault_analysis/cache')
+mem = Memory(cachedir=os.path.join(os.getenv('HOME'), 'neurovault_analysis/cache'))
 
 
 def mkdir_p(path):
@@ -239,79 +239,78 @@ if __name__ == '__main__':
     #mem.clear()
     combined_df = mem.cache(get_images_with_collections_df)()
 
-    # The following maps are not brain maps
-    faulty_ids = [96, 97, 98]
-    # And the following are crap
-    faulty_ids.extend([338, 339])
-    # 335 is a duplicate of 336
-    faulty_ids.extend([335, ])
-    combined_df = combined_df[~combined_df.image_id.isin(faulty_ids)]
+    # # The following maps are not brain maps
+    # faulty_ids = [96, 97, 98]
+    # # And the following are crap
+    # faulty_ids.extend([338, 339])
+    # # 335 is a duplicate of 336
+    # faulty_ids.extend([335, ])
+    # combined_df = combined_df[~combined_df.image_id.isin(faulty_ids)]
 
     print combined_df[['DOI', 'url_collection', 'name_image', 'file']]
 
-    #restrict to Z-, F-, or T-maps
-    combined_df = combined_df[combined_df['map_type'].isin(["Z","F","T"])]
-    terms_df = get_neurosynth_terms(combined_df)
-    print combined_df["name_collection"].value_counts()
-    combined_df = combined_df.merge(terms_df, on=['image_id', ])
+    # #restrict to Z-, F-, or T-maps
+    # combined_df = combined_df[combined_df['map_type'].isin(["Z","F","T"])]
+    # terms_df = get_neurosynth_terms(combined_df)
+    # print combined_df["name_collection"].value_counts()
+    # combined_df = combined_df.merge(terms_df, on=['image_id', ])
 
-    dest_dir = "/tmp/neurovault_analysis"
+    dest_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis/data')
     target = "/usr/share/fsl/data/standard/MNI152_T1_2mm.nii.gz"
 
     combined_df = mem.cache(download_and_resample)(combined_df,
                                                    dest_dir, target)
 
-    # Now remove -3360, -3362, and -3364, that are mean images, and not Z
-    # scores
-    not_Zscr = [-3360, -3362, -3364]
-    combined_df = combined_df[~combined_df.image_id.isin(not_Zscr)]
+    # # Now remove -3360, -3362, and -3364, that are mean images, and not Z
+    # # scores
+    # not_Zscr = [-3360, -3362, -3364]
+    # combined_df = combined_df[~combined_df.image_id.isin(not_Zscr)]
 
-    # Now remove images that are ugly, or obviously not z maps:
-    broken = [1202, 1163, 1931, 1101, 1099]
-    combined_df = combined_df[~combined_df.image_id.isin(broken)]
+    # # Now remove images that are ugly, or obviously not z maps:
+    # broken = [1202, 1163, 1931, 1101, 1099]
+    # combined_df = combined_df[~combined_df.image_id.isin(broken)]
 
     combined_df.to_csv('%s/metadata.csv' % dest_dir, encoding='utf8')
 
 
-    #--------------------------------------------------
-    # Plot a map of frequency of activation
-    freq_nii = get_frequency_map(combined_df, dest_dir, target)
-    freq_nii.to_filename("freq_map.nii.gz")
+    # #--------------------------------------------------
+    # # Plot a map of frequency of activation
+    # freq_nii = get_frequency_map(combined_df, dest_dir, target)
+    # freq_nii.to_filename("freq_map.nii.gz")
 
-    display = plot_anat("/usr/share/fsl/data/standard/MNI152_T1_2mm.nii.gz",
-                        display_mode='z',
-                        cut_coords=np.linspace(-30, 60, 7))
-    display.add_overlay(freq_nii, vmin=0, cmap=plt.cm.hot,
-                        colorbar=True)
-    display._colorbar_ax.set_yticklabels(["% 3i" % float(t.get_text())
-            for t in display._colorbar_ax.yaxis.get_ticklabels()])
-    display.title('Percentage of activations (Z or T > 3)')
+    # display = plot_anat("/usr/share/fsl/data/standard/MNI152_T1_2mm.nii.gz",
+    #                     display_mode='z',
+    #                     cut_coords=np.linspace(-30, 60, 7))
+    # display.add_overlay(freq_nii, vmin=0, cmap=plt.cm.hot,
+    #                     colorbar=True)
+    # display._colorbar_ax.set_yticklabels(["% 3i" % float(t.get_text())
+    #         for t in display._colorbar_ax.yaxis.get_ticklabels()])
+    # display.title('Percentage of activations (Z or T > 3)')
 
-    display.savefig('activation_frequency.png')
-    display.savefig('activation_frequency.pdf')
-
-
-    #--------------------------------------------------
-    # Plot the frequency of occurence of neurosynth terms
-    # Use the terms from neurosynth to label the ICAs
-    terms = combined_df[[c for c in combined_df.columns
-                         if c.startswith('neurosynth decoding')]]
-    terms = terms.fillna(0)
-    term_matrix = terms.as_matrix()
-    # Labels that have a negative correlation are not present in the map
-    term_matrix[term_matrix < 0] = 0
-
-    term_names = [c[20:] for c in combined_df.columns
-                  if c.startswith('neurosynth decoding')]
-
-    plt.figure(figsize=(5, 20))
-    plt.barh(np.arange(len(term_names)), term_matrix.sum(axis=0))
-    plt.axis('off')
-    plt.axis('tight')
-    plt.tight_layout()
-    for idx, name in enumerate(term_names):
-        plt.text(.1, idx + .1, name)
-    plt.savefig('term_distribution.pdf')
+    # display.savefig('activation_frequency.png')
+    # display.savefig('activation_frequency.pdf')
 
 
-    plt.show()
+    # #--------------------------------------------------
+    # # Plot the frequency of occurence of neurosynth terms
+    # # Use the terms from neurosynth to label the ICAs
+    # terms = combined_df[[c for c in combined_df.columns
+    #                      if c.startswith('neurosynth decoding')]]
+    # terms = terms.fillna(0)
+    # term_matrix = terms.as_matrix()
+    # # Labels that have a negative correlation are not present in the map
+    # term_matrix[term_matrix < 0] = 0
+
+    # term_names = [c[20:] for c in combined_df.columns
+    #               if c.startswith('neurosynth decoding')]
+
+    # plt.figure(figsize=(5, 20))
+    # plt.barh(np.arange(len(term_names)), term_matrix.sum(axis=0))
+    # plt.axis('off')
+    # plt.axis('tight')
+    # plt.tight_layout()
+    # for idx, name in enumerate(term_names):
+    #     plt.text(.1, idx + .1, name)
+    # plt.savefig('term_distribution.pdf')
+
+    # plt.show()
