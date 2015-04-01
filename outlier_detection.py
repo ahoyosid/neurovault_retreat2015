@@ -5,13 +5,11 @@ import numpy as np
 import pandas as pd
 import nibabel as nb
 
-from matplotlib import pyplot as plt
-from sklearn.decomposition import RandomizedPCA
-from masker import NeurovaultFeatureExtractor
+from feature_extraction import NeurovaultFeatureExtractor
 from sklearn.preprocessing import Imputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.cross_validation import StratifiedShuffleSplit, cross_val_score
+from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.metrics import classification_report
 
 
