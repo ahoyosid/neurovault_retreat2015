@@ -15,8 +15,9 @@ from nilearn.plotting import plot_img
 from matplotlib import pyplot as plt
 
 # data_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'data')
-brain_mask_img = nb.load(pjoin(os.sep, 'usr', 'share', 'fsl', 'data',
-                               'standard', 'MNI152_T1_3mm_brain_mask.nii.gz'))
+data_dir = pjoin('/media', 'ahoyosid', 'Seagate Backup Plus Drive',
+                 'neurovault_analysis', 'data')
+brain_mask_img = nb.load(pjoin(data_dir, 'MNI152_T1_3mm_brain_mask.nii.gz'))
 brain_n_voxels = int(brain_mask_img.get_data().sum())
 
 

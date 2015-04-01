@@ -11,14 +11,14 @@ from masker import NeurovaultEncoder
 from sklearn.preprocessing import Imputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.cross_validation import ShuffleSplit, cross_val_score
+from sklearn.cross_validation import StratifiedShuffleSplit, cross_val_score
 from sklearn.metrics import classification_report
 
 # data_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'data')
 # cache_dir = pjoin(os.getenv('HOME'), 'neurovault_analysis', 'cache')
 
 data_dir = pjoin('/media', 'ahoyosid', 'Seagate Backup Plus Drive',
-                 'neurovault_analysis')
+                 'neurovault_analysis', 'data')
 cache_dir = 'cache'
 
 
@@ -36,13 +36,13 @@ X = imputer.fit_transform(X)
 imputer = Imputer(-np.inf, strategy='median')
 X = imputer.fit_transform(X)
 
-labels = pd.read_csv(pjoin(data_dir,'labels.csv'))[['image_id', 'map_type',
+labels = pd.read_csv(pjoin(data_dir,'m_labels.csv'))[['image_id', 'map_type',
                                                     'is_yannick_brain']]
 y = labels['is_yannick_brain'].values
 
 print (y == 0).sum()
 
-cv = ShuffleSplit(y.size, n_iter=50, random_state=10)
+cv = StratifiedShuffleSplit(y, n_iter=50, random_state=10)
 clf = LogisticRegression(C=1, penalty='l2')
 clf = RandomForestClassifier(n_estimators=20, max_depth=20, n_jobs=-1)
 
