@@ -21,8 +21,17 @@ brain_mask_img = nb.load(pjoin(data_dir, 'MNI152_T1_3mm_brain_mask.nii.gz'))
 brain_n_voxels = int(brain_mask_img.get_data().sum())
 
 
-class NeurovaultEncoder(TransformerMixin, CacheMixin):
+class NeurovaultFeatureExtractor(TransformerMixin, CacheMixin):
+    """Compute masks from Neurovault images, and extract features
+    for outlier detection.
 
+    Parameters
+    ----------
+    percentiles: list or None
+        list of percentiles of the image to compute
+    n_dilations: int
+        number of dilation iterations (and then of erosions) to compute the final mask
+    """
     def __init__(self, percentiles=None, n_dilations=1, n_jobs=1, memory=None, memory_level=1):
         self.percentiles = _check_percentiles(percentiles)
         self.n_dilations = n_dilations
@@ -31,11 +40,6 @@ class NeurovaultEncoder(TransformerMixin, CacheMixin):
         self.memory_level = 1
 
     def fit(self, imgs, y=None):
-        # compute_neurovault_mask_proxy = delayed(self._cache(compute_neurovault_mask, func_memory_level=1))
-        # Parallel(n_jobs=self.n_jobs)(
-        #     compute_neurovault_mask_proxy(img, self.n_dilations)
-        #     for img in imgs)
-
         return self
 
     def transform(self, imgs, y=None):
@@ -47,10 +51,6 @@ class NeurovaultEncoder(TransformerMixin, CacheMixin):
             delayed_extract_neurovault_features(img, self.n_dilations, self.percentiles)
             for img in imgs)
 
-        # for img in imgs:
-        #     x = self._cache(extract_neurovault_features, func_memory_level=1)(img, self.n_dilations, self.percentiles)
-        #     X.append(x)
-
         return np.vstack(X)
 
 
@@ -60,20 +60,24 @@ def compute_neurovault_mask(img, n_dilations):
     data = img.get_data()
     data[np.isnan(data)] = 0
 
+    # resample reference brain mask from FSL to image size
     try:
         brain_mask = resample_img(brain_mask_img,
                                   target_affine=img.get_affine(),
                                   target_shape=img.shape,
                                   interpolation='nearest').get_data() > 0.
     except Exception, e:
-        print e
         return None, None, None
 
+    # if there is a least 10 percent of zeros in the image, we consider it the background value
     if (data == 0).sum() / float(data.size) > .1:
         mask = np.abs(data) > 0
         mask = binary_dilation(mask, iterations=n_dilations)
         mask = binary_erosion(mask, iterations=n_dilations)
 
+    # else we compute a kmeans with 2 clusters, and use the kmeans label that gives the
+    # best brain coverage (actually the ratio of brain coverage, and number of voxels out of
+    # the reference brain mask).
     else:
         best_ratio = 0
         kmeans = KMeans(n_clusters=2)
@@ -106,31 +110,33 @@ def compute_neurovault_mask(img, n_dilations):
 
 def extract_neurovault_features(img, n_dilations, percentiles):
     mask_img, brain_coverage, out_brain = compute_neurovault_mask(img, n_dilations)
+    n_clusters = 10
+    kmeans = KMeans(n_clusters=n_clusters)
 
-    n_features = len(percentiles) + 5
+    n_features = len(percentiles) + 7
 
+    # if mask computation fails, then the image must be weird and we return a vector of zeros
     if mask_img is None:
         return np.zeros(n_features)
 
-    # mask_img.to_filename('/home/ys218403/neurovault_analysis/data/masks/%s' % img.split('/')[-1])
-    # try:
-    #     plot_img(mask_img).savefig('/home/ys218403/neurovault_analysis/data/masks/%s.png' % img.split('/')[-1])
-    # except:
-    #     mask_img.to_filename('/home/ys218403/neurovault_analysis/data/masks/%s' % img.split('/')[-1])
-
-    # plt.close('all')
+    # get data inside the mask
     data = check_niimg(img).get_data()
     x = data[mask_img.get_data() > 0.]
 
+    # if image has no values inside the mask, we return a vector of zeros
     if x.shape[0] == 0:
         return np.zeros(n_features)
     else:
+        # extract a bunch of descriptors
         f = np.percentile(x, percentiles)
-        f = np.hstack([f, [brain_coverage,
-                           out_brain,
-                           brain_coverage / out_brain,
-                           brain_coverage + out_brain,
-                           np.std(x),
+        f = np.hstack([f,                            # percentiles
+                       [brain_coverage,              # percentage of brain coverage
+                        out_brain,                   # percentage of voxels out of the brain from computed mask
+                        brain_coverage / out_brain,  # ratio
+                        brain_coverage + out_brain,  # sum
+                        np.std(x),                   # std
+                        np.min(x),                   # min
+                        np.max(x),                   # max
                        ]
                    ])
 
@@ -145,13 +151,3 @@ def _check_percentiles(percentiles):
 
     return percentiles
 
-
-if __name__ == '__main__':
-    import glob
-
-    cache_dir = os.path.join(os.getenv('HOME'), 'neurovault_analysis', 'cache')
-    images = glob.glob(os.path.join(data_dir, 'original', '*.nii.gz'))
-    images.remove('/home/ys218403/neurovault_analysis/data/original/0407.nii.gz')
-
-    encoder = NeurovaultEncoder(memory=cache_dir, n_jobs=-1)
-    X = encoder.fit_transform(images)
