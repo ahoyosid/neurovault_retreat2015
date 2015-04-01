@@ -36,7 +36,7 @@ imputer = Imputer(-np.inf, strategy='median')
 X = imputer.fit_transform(X)
 
 # load labels for is_stat_map classification
-labels = pd.read_csv(os.path.join(data_dir,'labels.csv'))[['image_id', 'map_type', 'is_stat_map', 'map_type_v2']]
+labels = pd.read_csv('labels.csv')[['image_id', 'map_type', 'is_stat_map', 'map_type_v2']]
 y = labels['is_stat_map'].values
 
 # cross_validation and prediction
